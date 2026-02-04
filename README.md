@@ -265,11 +265,13 @@ The MAS runs on [DALIA](https://github.com/AAAI-DISIM-UnivAQ/dalia), which is a 
 --- 
 ## Credits
 This project was developed using DALIA and all the agents are written in DALI language. References to both repositories is provided here below.
+
 - DALIA repository is available at: https://github.com/AAAI-DISIM-UnivAQ/dalia.
 - DALI repository is available at: https://github.com/AAAI-DISIM-UnivAQ/DALI.
+
 Both repositories are developed by UNIVAQ's DISIM: https://www.disim.univaq.it.
 
-### Addition of this Fork
+### Additions of this Fork
 In this fork just the files implementing and describing the MAS have been added, which are the following.
 - `quiz` folder.
 - `Quiz MAS Class Diagram`.
