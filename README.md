@@ -272,7 +272,7 @@ This project was developed using DALIA and all the agents are written in DALI la
 Both repositories are developed by UNIVAQ's DISIM: https://www.disim.univaq.it.
 
 ### Additions of this Fork
-In this fork just the files implementing and describing the MAS have been added, which are the following.
+In this fork, other than this README presenting the project, the only additions are the files implementing and describing the MAS, which are the following.
 - `quiz` folder.
 - `Quiz MAS Class Diagram`.
 - `Quiz MAS Sequence Diagram`.
