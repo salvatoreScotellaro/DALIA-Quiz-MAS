@@ -1,0 +1,9 @@
+{
+    "notary": "quizNotary",
+    "master": "quizMaster",
+    "helper1": "quizHelper1",
+    "helper2": "quizHelper2",
+    "competitor1": "quizCompetitor",
+    "competitor2": "quizCompetitor",
+    "competitor3": "quizCompetitor"
+}

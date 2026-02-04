@@ -1,0 +1,221 @@
+/* Declare Libraries */
+:- use_module(library(random)).
+:- use_module(library(lists)).
+:- use_module(library(aggregate)).
+
+/* Declare dyanmic predicates */
+:- dynamic check_answer/3.
+:- dynamic participants/1.
+:- dynamic game_state/1.
+:- dynamic asked_questions/1.
+:- dynamic answered/1.
+:- dynamic question_not_answered/1.
+:- dynamic current_question/1.
+:- dynamic game_end_confirm/1.
+
+:- write('Master agent loading...'), nl.
+
+/* Initialize Available Quiz Questions */
+question(question1).
+question(question2).
+question(question3).
+question(question4).
+question(question5).
+question(question6).
+question(question7).
+question(question8).
+question(question9).
+question(question10).
+question(question11).
+question(question12).
+question(question13).
+question(question14).
+question(question15).
+question(question16).
+question(question17).
+question(question18).
+question(question19).
+question(question20).
+
+:- write('Questions loaded.'), nl.
+
+/* Initialize Available Quiz Answers */
+answer(answer1).
+answer(answer2).
+answer(answer3).
+answer(answer4).
+answer(answer5).
+answer(answer6).
+answer(answer7).
+answer(answer8).
+answer(answer9).
+answer(answer10).
+answer(answer11).
+answer(answer12).
+answer(answer13).
+answer(answer14).
+answer(answer15).
+answer(answer16).
+answer(answer17).
+answer(answer18).
+answer(answer19).
+answer(answer20).
+
+:- write('Answers loaded.'), nl.
+
+/* Initialize Correct Quiz Correspondences */
+correct(question1,answer1).
+correct(question2,answer2).
+correct(question3,answer3).
+correct(question4,answer4).
+correct(question5,answer5).
+correct(question6,answer6).
+correct(question7,answer7).
+correct(question8,answer8).
+correct(question9,answer9).
+correct(question10,answer10).
+correct(question11,answer11).
+correct(question12,answer12).
+correct(question13,answer13).
+correct(question14,answer14).
+correct(question15,answer15).
+correct(question16,answer16).
+correct(question17,answer17).
+correct(question18,answer18).
+correct(question19,answer19).
+correct(question20,answer20).
+
+:- write('Correspondences loaded.'), nl.
+
+/* Initialize Constant Predicates 
+    - Notary Agent Name       
+    - Possible Answers Number */
+notary(notary).
+possible_answers_num(4).
+
+/* Initialize Dynamic Predicates */
+participants([]).
+game_state(waiting).
+asked_questions([]).
+current_question(none).
+game_end_confirm([]).
+
+/* Declare Auxiliary Predicates */
+correct_answer(Q,A) :- question(Q), answer(A), correct(Q,A).
+available_questions(L) :- findall(Q, question(Q), L).
+available_answers(L) :- findall(A, answer(A), L).
+add(A,L1,L2) :- L2 = [A|L1]. 
+
+send_to_all([],_,_).
+send_to_all([A|T], Event, From) :- agent(From), 
+                               messageA(A,send_message(Event, From)),
+                               send_to_all(T, Event, From), 
+                               write('Event sent to '),
+                               write(A),
+                               write(' as '),
+                               write(Event),
+                               write(' from '),
+                               write(From), nl.
+
+subtract_questions([],_,[]).
+subtract_questions([H|T],L2,R) :- member(H,L2), subtract_questions(T,L2,R).
+subtract_questions([H|T],L2,[H|R]) :- \+ member(H,L2), subtract_questions(T,L2,R). 
+
+generate_answers(Q,L) :<
+    correct(Q,A),
+    available_answers(Answers),
+    delete(Answers, A, WrongAnswers),
+    possible_answers_num(N),
+    N1 is N - 1,
+    take_random(N1, WrongAnswers, SelectedWrong), 
+    append([A], SelectedWrong, L).
+
+take_random(0, _, []) :- !.
+take_random(N, L, [H|T]) :-
+    N > 0,
+    length(L, Len),
+    random(0, Len, Idx), 
+    nth0(Idx, L, H), 
+    delete(L, H, L1),
+    N1 is N - 1,
+    take_random(N1, L1, T).
+
+/* Change Game State when Game Starts */
+startE(L) :> retract(game_state(_)),
+          assert(game_state(running)), 
+          send_to_all(L, start, Me).
+
+/* Ask Questions to All Participants */
+ask_questionE(L) :> game_state(running), 
+            agent(Me),
+            participants(Participants),
+            retract(participants(Participants)),
+            assert(participants(L)),
+            initialize_answeredA(L),
+            available_questions(Questions),
+            asked_questions(Asked),
+            subtract_questions(Questions, Asked, Remaining),
+            random_member(Q, Remaining),
+            retract(asked_questions(Asked)),
+            assert(asked_questions([Q|Asked])),
+            assert(question_not_answered(Q)),
+            retract(current_question(_)),
+            assert(current_question(Q)),
+            generate_answersA(Q,Answers),
+            write('Ask question '),
+            write(Q),
+            write(' to competitors '),
+            write(L), nl,
+            send_to_all(L, ask(Q,Answers), Me).
+
+/* Initialize Answered Atoms for All Participants */
+initialize_answered(L) :< retractall(answered(_)).
+
+/* Check Answers Correctness */
+answer_questionE(Q,A,P) :> game_state(running), current_question(Q), question_not_answered(Q), \+ answered(P), check_answerA(Q,A,P).
+answer_questionE(Q,A,P) :> game_state(running), current_question(Q), question_not_answered(Q), answered(P), write('Already tried to answer this question. Wait for next question.').
+answer_questionE(Q,A,P) :> game_state(running), current_question(Q), \+ question_not_answered(Q), write('Question already answered. Wait for next question.').
+
+check_answer(Q,A,P) :< game_state(running),  
+                    correct_answer(Q,A),
+                    retract(question_not_answered(Q)),
+                    assert(answered(P)),
+                    write('Answer of '),
+                    write(P),
+                    write(' is correct!'), nl,
+                    notary(N),
+                    agent(Me),
+                    messageA(N, send_message(update(P),Me)),
+                    messageA(P, send_message(correct_answer(Q,A),Me)).
+
+check_answer(Q,A,P) :< game_state(running), 
+                    \+ correct_answer(Q,A),
+                    assert(answered(P)),
+                    write('Answer of '),
+                    write(P),
+                    write(' is wrong!'), nl,
+                    messageA(P, send_message(wrong_answer(A),Me)).
+
+/* If all participants answered wrong, go to next question */
+next_question :- game_state(running),
+                findall(A, answered(A), L),
+                length(L, Count),
+                participants(L1),
+                length(L1, ParticipantsNum),
+                Count == ParticipantsNum.
+
+ next_questionI :> game_state(running), 
+                   notary(N),
+                   agent(Me),
+                   messageA(N, send_message(next_question,Me),Me).
+
+/* End Game Notifying Winner and Other Players */
+end_gameE(A) :> game_state(running),
+                write('Game is finished. Winner is '),
+                write(A), nl,
+                agent(Me),
+                participants(L),
+                send_to_all(L,end(A),Me),
+                retract(game_state(_)),
+                assert(game_state(finished)),
+                write('Game is over. Sleeping forever.'), nl.

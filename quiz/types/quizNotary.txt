@@ -1,0 +1,217 @@
+/* Declare Libraries */
+:- use_module(library(system)).
+
+/* Declare dyanmic predicates */
+:- dynamic participants/1.
+:- dynamic game_state/1.
+:- dynamic points/2.
+:- dynamic game_starting_time/1.
+:- dynamic question_starting_time/1.
+:- dynamic has_help/2.
+:- dynamic game_end_confirm/1.
+
+:- write('Notary agent loading...'), nl.
+
+/* Initialize Constant Predicates
+    - Mininum Number of Participants
+    - Winning Threshold
+    - Maximum Game Duration
+    - Maximum Question Duration   
+    - Master Agent Name            
+    - Quiz Helper Agents Names     */
+min_participants(3).
+winning_threshold(3).
+max_game_duration(600).
+max_question_duration(60).
+master(master).
+quiz_helper(helper1,1).
+quiz_helper(helper2,2).
+
+/* Initialize Dynamic Predicates */
+participants([]).
+game_state(waiting).
+game_starting_time(0).
+question_starting_time(0).
+game_end_confirm([]).
+
+/* Declare Auxiliary Predicates */
+add(A,L1,L2) :- L2 = [A|L1]. 
+
+/* Write Initial Message */
+:- min_participants(Min),
+    write('Waiting to have at least '),
+    write(Min),
+    write(' participants to the game ...'), nl.
+
+/* Confirm Participation Message */
+participateE(A) :> participants(L),
+                   add(A,L,L2),
+                   agent(Me),
+                   retract(participants(L)),
+                   assert(participants(L2)),
+                   assert(points(A,0)),
+                   assert(has_help(A,1)),
+                   assert(has_help(A,2)),
+                   write(A),
+                   write(' participates to the Quiz!'), nl,
+                   write('Current list of participants is '),
+                   write(L2), nl,
+                   check_start_conditionA,
+                   messageA(A,send_message(confirm(Me),Me)).
+
+/* Start Game if Min Participants Joined
+   and Game is in Waiting state       */
+check_start_condition :< participants(L),
+                length(L,N),
+                min_participants(Min),
+                N == Min,
+                game_state(waiting),
+                start_gameA.
+
+/* Wait for More Participants */
+check_start_condition :< game_state(waiting),
+                        participants(L),
+                        length(L,N),
+                        min_participants(Min),
+                        N < Min,
+                        Diff is Min - N,
+                        write('Wait for '),
+                        write(Diff),
+                        write(' more participants.'), nl.
+
+/* Write Game is already Finished */
+check_start_condition :< game_state(finished),
+                         write('Game is Finished.'), nl.
+
+/* Tell Master Agent to Ask First Question */
+start_game :< game_state(waiting),
+              participants(L),
+              master(M),
+              agent(Me),
+              write('Game is started!'), nl,
+              retract(game_state(waiting)),
+              assert(game_state(running)),
+              quiz_helper(H1,1),
+              quiz_helper(H2,2),
+              messageA(H1, send_message(start,Me)),
+              messageA(H2, send_message(start,Me)),
+              messageA(M, send_message(start(L),Me)),
+              messageA(M, send_message(ask_question(L),Me)),
+              now(T),
+              retract(game_starting_time(_)),
+              retract(question_starting_time(_)),
+              assert(game_starting_time(T)),
+              assert(question_starting_time(T)).
+
+/* Check Game Duration */
+game_time_expired :- game_state(running),
+                     game_starting_time(T),
+                     now(T1),
+                     max_game_duration(Max),
+                     Diff is T1 - T,
+                     Diff > Max.
+
+game_time_expiredI :> write('Game is finished due to Maximum Duration passed.'),
+                      retract(game_state(_)),
+                      assert(game_state(finished)).
+
+/* Check Question Duration */
+question_time_expired :- game_state(running),
+                     question_starting_time(T),
+                     now(T1),
+                     max_question_duration(Max),
+                     Diff is T1 - T,
+                     Diff > Max.
+
+question_time_expiredI :> write('Question skipped due to Maximum Duration passed.'),
+                          now(T),
+                          master(M),
+                          participants(L),                 
+                          retract(question_starting_time(_)),
+                          assert(question_starting_time(T)),
+                          messageA(M, send_message(ask_question(L),Me)).
+
+/* Update Players Points for Correct Answer and Start New Question */
+updateE(A) :> game_state(running),
+              points(A,P),
+              P1 is P + 1,
+              retract(points(A,P)),
+              assert(points(A,P1)),
+              write(A),
+              write(' points updated to '),
+              write(P1),
+              write('. Previous points were '),
+              write(P),
+              write('.'), nl,
+              check_endA(A,P1).
+
+/* If all participants answered wrong, go to next question */
+next_questionE :> game_state(running),
+                  write('Nobody answered correctly. Going to next question.'),
+                  now(T),
+                  master(M),
+                  participants(L),                 
+                  retract(question_starting_time(_)),
+                  assert(question_starting_time(T)),
+                  messageA(M, send_message(ask_question(L),Me)).
+
+
+/* Call Helper Agent if Help Available */
+helpE(A,Q,T) :> game_state(running), 
+              has_help(A,T),
+              retract(has_help(A,T)),
+              write('Calling helper agent '),
+              write(T),
+              write(' for '),
+              write(A),
+              write(' to solve '),
+              write(Q),
+              quiz_helper(H,T),
+              agent(Me),
+              messageA(H, send_message(help(A,Q), Me)).
+
+helpE(A,Q,T) :> game_state(running),
+                \+ has_help(A,T),
+                write('Help of type '),
+                write(T),
+                write(' already used by '),
+                write(A).
+
+help_overlapE(A) :> game_state(running),
+                    assert(has_help(A,1)),
+                    write('Type 1 hint refound to '),
+                    write(A),
+                    write(' due to overlap.').
+
+/* Check Winning Condition */
+check_end(A,P) :< winning_threshold(T),
+              P == T,
+              end_gameA(A,P). 
+
+check_end(A,P) :< winning_threshold(T),
+                  P < T,
+                  agent(Me),
+                  master(M),
+                  participants(L),
+                  now(Now),                 
+                  retract(question_starting_time(_)),
+                  assert(question_starting_time(Now)),
+                  write('Going to next question...'),
+                  messageA(M, send_message(ask_question(L),Me)).
+
+/* End Game Notifying Master and Helpers */
+end_game(A,P) :< write('Winner is '),
+               write(A),
+               write(' with '),
+               write(P),
+               write(' points.'), nl,
+               master(M),
+               quiz_helper(H1,1),
+               quiz_helper(H2,2),
+               agent(Me),
+               messageA(M, send_message(end_game(A),Me)),
+               messageA(H1, send_message(end_game,Me)),
+               messageA(H2, send_message(end_game,Me)),
+               retract(game_state(_)),
+               assert(game_state(finished)),
+               write('Game is over. Sleeping forever.'), nl.

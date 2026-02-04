@@ -1,3 +1,0 @@
-t60.
-
-messageE(Content):> write('received alarm about '), write(Content), write(', preparing for evacuation.'), nl.

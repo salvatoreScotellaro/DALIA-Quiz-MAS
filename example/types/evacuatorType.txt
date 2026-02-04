@@ -1,5 +1,0 @@
-t60.
-
-evacuateE(L) :> write('evacuating at '), write(L), nl, logA(message(evacuator, evacuating)), messageA(coordinator, send_message(evacuated(L), Me)), logA(message(evacuator, done)).
-
-logA(X) :> messageA(logger, send_message(X, Me)).

@@ -1,0 +1,221 @@
+/* Declare Libraries */
+:- use_module(library(system)).
+
+/* Declare dyanmic predicates */
+:- dynamic not_in_game/0.
+:- dynamic wake_up/0.
+:- dynamic current_question/1.
+:- dynamic answered/1.
+:- dynamic wrong_answers/1.
+:- dynamic game_state/1.
+:- dynamic have_hint1/0.
+:- dynamic have_hint2/0.
+:- write('Competitor agent loading...'), nl.
+
+/* Initialize Constant Predicates
+    - Possible Waiting Times 
+    - Fixed Waiting Time 
+    - Notary Agent Name 
+    - Master Agent Name         
+    - Probability of using Hints  */
+wait_times([1,2,3,4,5,6,7,8,9,10]).
+fixed_waiting_time(5).
+notary(notary).
+master(master).
+hint1_probability(0.25).
+hint2_probability(0.25).
+
+/* Initialize Dynamic Predicates */
+current_question(none).
+wrong_answers([]).
+game_state(waiting).
+have_hint1 :- true.
+have_hint2 :- true.
+
+/* Declare Auxiliary Predicates */
+subtract_answers([],_,[]).
+subtract_answers([H|T],L2,R) :- member(H,L2), subtract_answers(T,L2,R).
+subtract_answers([H|T],L2,[H|R]) :- \+ member(H,L2), subtract_answers(T,L2,R).
+
+/* Wake Up and Send Participation to the Game 
+   Wait for Confirm before Trying again */
+wake_up :- true.
+not_in_game :- true.
+
+wake_upI :> retract(wake_up),
+    not_in_game, 
+    now(Seed), 
+    setrand(Seed),
+    agent(Me),
+    wait_times(L),
+    random_member(T,L),
+    notary(N),
+    write('Waiting '),
+    write(T),
+    write(' time to join game...'), nl,
+    sleep(T),
+    write('Participating to the Quiz!'), nl,
+    messageA(N,send_message(participate(Me),Me)).
+
+/* Receive Participation Confirm */
+confirmE(N) :> retract(not_in_game),
+            write(N),
+            write(' confirmed participation!'), nl.
+    
+/* Change Game State when Game Starts */
+startE :> retract(game_state(_)),
+          assert(game_state(running)).
+
+/* Celebrate Win */
+endE(A) :> agent(Me),
+        Me == A,
+        write('I am the Winner!'), nl,
+        retract(game_state(_)),
+        assert(game_state(finished)),
+        sleep_foreverA.
+
+/* Answer to Loss */
+endE(A) :> agent(Me),
+         Me \== A,
+         write('Oh no, i lost. Congratulations to the winner.'), nl,
+         retract(game_state(_)),
+         assert(game_state(finished)),
+         sleep_foreverA.
+
+/* Sleep Infinitely when Game Ends */
+sleep_forever :< write('Game is over. Sleeping forever.'). 
+
+/* When question arrives, evaluate the chance 
+   of using one of the hint, if available. */
+askE(Q,Answers) :> game_state(running), 
+           \+ answered(Q), 
+           retract(current_question(_)),
+           assert(current_question(Q)),
+           have_hint1,
+           hint1_probability(P), 
+           maybe(P),
+           retract(have_hint1),
+           write('Asked '), write(Q), write(' with possibilities '), write(Answers), nl,
+           ask_for_helpA(Q,1).
+
+askE(Q,Answers) :> game_state(running), 
+           \+ answered(Q),
+           retract(current_question(_)),
+           assert(current_question(Q)),
+           have_hint2,
+           hint2_probability(P), 
+           maybe(P),
+           retract(have_hint2),
+           write('Asked '), write(Q), write(' with possibilities '), write(Answers), nl,
+           ask_for_helpA(Q,2).
+
+askE(Q,Answers) :> game_state(running), 
+            \+ answered(Q),
+            retract(current_question(_)),
+            assert(current_question(Q)),
+            write('Asked '), write(Q), write(' with possibilities '), write(Answers), nl,
+            answerA(Q,Answers).
+
+askE(Q,Answers) :> game_state(running),  
+           answered(Q),
+           write('Question already answered. Waiting for another question.').
+
+/* If using an hint, ask to notary */
+ask_for_help(Q,T) :< game_state(running), 
+                     write('Using help of type '), write(T), write(' to answer '), write(Q), nl,
+                     notary(N),
+                     agent(Me),
+                     messageA(N, send_message(help(Me,Q,T),Me)).
+
+help_overlapE :> game_state(running), 
+                 assert(have_hint1),
+                 write('Type 1 hint refound by notary due to overlap.'),
+                 answerA(Q,Answers).
+
+help_responseE(R,Type) :> game_state(running), 
+                       current_question(Q),
+                       \+ answered(Q),
+                       Type == 1,
+                       write('Correct answer received from helper. Answer is '), write(R), nl,
+                       master(M),
+                       agent(Me),
+                       assert(answered(Q)),
+                       messageA(M, send_message(answer_question(Q,R,Me),Me)).
+
+help_responseE(R,Type) :> game_state(running), 
+                       current_question(Q), 
+                       \+ answered(Q), 
+                       Type == 2,
+                       write('Help received tells that the answer is in '), write(R), nl,
+                       wait_times(L),
+                       random_member(T,L),
+                       random_member(A,R),
+                       assert(answered(Q)),
+                       write('Waiting '),
+                       write(T),
+                       write(' time to answer.'), nl,
+                       sleep(T),
+                       write('Answer question '),
+                       write(Q),
+                       write(' with '),
+                       write(A), nl,
+                       master(M),
+                       agent(Me),
+                       messageA(M, send_message(answer_question(Q,A,Me),Me)).
+
+/* Answer Question without helps */
+answer(Q,Answers) :< game_state(running), 
+                    \+ answered(Q), 
+                    agent(Me),
+                    master(M),
+                    random_member(A,Answers),
+                    wait_times(L),
+                    random_member(T,L),
+                    assert(answered(Q)),
+                    write('Waiting '),
+                    write(T),
+                    write(' time to answer.'), nl,
+                    sleep(T),
+                    write('Answer question '),
+                    write(Q),
+                    write(' with '),
+                    write(A), nl,
+                    messageA(M, send_message(answer_question(Q,A,Me),Me)).
+
+/* Celebrate Correct Answer */
+correct_answerE(Q,A) :> game_state(running), 
+                   write('Answered question '),
+                   write(Q),
+                   write(' with '),
+                   write(A),
+                   write('. One point for me!').
+
+/* If answer was wrong, wait for next question */
+wrong_answerE(A) :> game_state(running), 
+                    write('My attempt with '),
+                    write(A),
+                    write(' was wrong. Waiting for next question.').
+
+/* Try Another Answer if Previous was Wrong
+wrong_answerE(A) :> write('My attempt with '),
+                    write(A),
+                    write(' was wrong...'), nl,
+                    wrong_answers(L),
+                    retract(wrong_answers(_)),
+                    assert(wrong_answers([A|L])),
+                    wait_times(Times),
+                    random_member(T,Times),
+                    write('Waiting '),
+                    write(T),
+                    write(' time to answer again.'),
+                    sleep(T),
+                    available_answers(Answers),
+                    wrong_answers(Wrong),
+                    subtract_answers(Answers, Wrong, Possibilities),
+                    random_member(A1, Possibilities),
+                    write('Now trying with '),
+                    write(A1),
+                    current_question(Q),
+                    master(M),
+                    agent(Me),
+                    messageA(M, send_message(answer_question(Q,A1,Me),Me)). */

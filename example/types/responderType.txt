@@ -1,6 +1,0 @@
-t60.
-
-respondE(E, L) :> write('using '), write(E), write(' at '), write(L), nl, messageA(coordinator, send_message(responded(L), Me)), logA(message(responder, done)).
-
-
-logA(X) :> messageA(logger, send_message(X, Me)).

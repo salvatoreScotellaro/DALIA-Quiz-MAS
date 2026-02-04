@@ -1,0 +1,120 @@
+/* Declare dyanmic predicates */
+:- dynamic game_state/1.
+:- dynamic last_requested_question/1.
+
+/* Initialize Available Quiz Questions */
+question(question1).
+question(question2).
+question(question3).
+question(question4).
+question(question5).
+question(question6).
+question(question7).
+question(question8).
+question(question9).
+question(question10).
+question(question11).
+question(question12).
+question(question13).
+question(question14).
+question(question15).
+question(question16).
+question(question17).
+question(question18).
+question(question19).
+question(question20).
+:- write('Questions loaded.'), nl.
+
+/* Initialize Available Quiz Answers */
+answer(answer1).
+answer(answer2).
+answer(answer3).
+answer(answer4).
+answer(answer5).
+answer(answer6).
+answer(answer7).
+answer(answer8).
+answer(answer9).
+answer(answer10).
+answer(answer11).
+answer(answer12).
+answer(answer13).
+answer(answer14).
+answer(answer15).
+answer(answer16).
+answer(answer17).
+answer(answer18).
+answer(answer19).
+answer(answer20).
+:- write('Answers loaded.'), nl.
+
+/* Initialize Correct Quiz Correspondences */
+correct(question1,answer1).
+correct(question2,answer2).
+correct(question3,answer3).
+correct(question4,answer4).
+correct(question5,answer5).
+correct(question6,answer6).
+correct(question7,answer7).
+correct(question8,answer8).
+correct(question9,answer9).
+correct(question10,answer10).
+correct(question11,answer11).
+correct(question12,answer12).
+correct(question13,answer13).
+correct(question14,answer14).
+correct(question15,answer15).
+correct(question16,answer16).
+correct(question17,answer17).
+correct(question18,answer18).
+correct(question19,answer19).
+correct(question20,answer20).
+:- write('Correspondences loaded.'), nl.
+
+/* Initialize Constant Predicates 
+    - Notary Agent Name       */
+notary(notary).
+
+/* Initialize Dynamic Predicates */
+game_state(waiting).
+last_requested_question(none).
+
+/* Change Game State when Game Starts */
+startE :> retract(game_state(_)),
+          assert(game_state(running)),
+          write('Game is started. Ready to Help!').
+
+/* Provide Help to Agent */
+helpE(A,Q) :> game_state(running),
+              question(Q),
+              last_requested_question(Q1),
+              Q1 \== Q,
+              retract(last_requested_question(_)),
+              assert(last_requested_question(Q)),
+              correct(Q, Answer),
+              write('Called by '),
+              write(A),
+              write(' to solve '),
+              write(Q),
+              write('. Returning '),
+              write(Answer),
+              agent(Me),
+              messageA(A, send_message(help_response(Answer,1), Me)).
+
+helpE(A,Q) :> game_state(running),
+              question(Q),
+              last_requested_question(Q1),
+              Q1 == Q,
+              write('Help already requested for this question.'),
+              agent(Me),
+              notary(N),
+              messageA(N, send_message(help_overlap(A), Me)).
+              messageA(A, send_message(help_overlap, Me)).
+
+/* Change Game State when Game Ends */
+end_gameE :> retract(game_state(_)),
+        assert(game_state(finished)),
+        sleep_foreverA.
+
+/* Sleep Infinitely when Game Ends */
+sleep_forever :< write('Game is over. Sleeping forever.').

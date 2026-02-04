@@ -1,0 +1,132 @@
+/* Declare Libraries */
+:- use_module(library(random)).
+:- use_module(library(lists)).
+
+/* Declare dyanmic predicates */
+:- dynamic game_state/1.
+
+/* Initialize Available Quiz Questions */
+question(question1).
+question(question2).
+question(question3).
+question(question4).
+question(question5).
+question(question6).
+question(question7).
+question(question8).
+question(question9).
+question(question10).
+question(question11).
+question(question12).
+question(question13).
+question(question14).
+question(question15).
+question(question16).
+question(question17).
+question(question18).
+question(question19).
+question(question20).
+:- write('Questions loaded.'), nl.
+
+/* Initialize Available Quiz Answers */
+answer(answer1).
+answer(answer2).
+answer(answer3).
+answer(answer4).
+answer(answer5).
+answer(answer6).
+answer(answer7).
+answer(answer8).
+answer(answer9).
+answer(answer10).
+answer(answer11).
+answer(answer12).
+answer(answer13).
+answer(answer14).
+answer(answer15).
+answer(answer16).
+answer(answer17).
+answer(answer18).
+answer(answer19).
+answer(answer20).
+:- write('Answers loaded.'), nl.
+
+/* Initialize Correct Quiz Correspondences */
+correct(question1,answer1).
+correct(question2,answer2).
+correct(question3,answer3).
+correct(question4,answer4).
+correct(question5,answer5).
+correct(question6,answer6).
+correct(question7,answer7).
+correct(question8,answer8).
+correct(question9,answer9).
+correct(question10,answer10).
+correct(question11,answer11).
+correct(question12,answer12).
+correct(question13,answer13).
+correct(question14,answer14).
+correct(question15,answer15).
+correct(question16,answer16).
+correct(question17,answer17).
+correct(question18,answer18).
+correct(question19,answer19).
+correct(question20,answer20).
+:- write('Correspondences loaded.'), nl.
+
+/* Initialize Constant Predicates
+    - Number of Reduced Answers 
+    - Notary Agent Name */
+reduced_answers_num(2).
+notary(notary).
+
+/* Initialize Dynamic Predicates */
+game_state(waiting).
+
+/* Declare Auxiliary Predicates */
+available_answers(L) :- findall(A, answer(A), L).
+
+reduced_answers(Q, L, Len) :-
+    correct(Q,A),
+    available_answers(Answers),
+    delete(Answers, A, WrongAnswers),
+    NumWrong is Len - 1,
+    take_random(NumWrong, WrongAnswers, SelectedWrong), 
+    append([A], SelectedWrong, L).
+
+take_random(0, _, []) :- !.
+take_random(N, L, [H|T]) :-
+    N > 0,
+    length(L, Len),
+    random(0, Len, Idx), 
+    nth0(Idx, L, H), 
+    delete(L, H, L1),
+    N1 is N - 1,
+    take_random(N1, L1, T).
+
+/* Change Game State when Game Starts */
+startE :> retract(game_state(_)),
+          assert(game_state(running)),
+          write('Game is started. Ready to Help!').
+
+/* Provide Help to Agent */
+helpE(A,Q) :> game_state(running),
+              question(Q),
+              reduced_answers_num(N),
+              reduced_answers(Q,L,N),
+              write('Called by '),
+              write(A),
+              write(' to solve '),
+              write(Q),
+              write('. Returning '),
+              write(L),
+              agent(Me),
+              messageA(A, send_message(help_response(L,2), Me)).
+
+/* Change Game State when Game Ends */
+end_gameE :> retract(game_state(_)),
+        assert(game_state(finished)),
+        sleep_foreverA.
+
+/* Sleep Infinitely when Game Ends */
+sleep_forever :< write('Game is over. Sleeping forever.').
