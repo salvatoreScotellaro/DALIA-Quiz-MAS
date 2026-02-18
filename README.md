@@ -1,10 +1,12 @@
 # Trivia Quiz MAS
 This repository implements a MAS that plays a trivia quiz game. The implementation has been developed in DALIA, which is an extension of the [DALI](https://github.com/AAAI-DISIM-UnivAQ/DALI) logic programming language also providing a GUI.
-Before proceeding in this README, notice that this is divided in the following subsections, each dicussing an important either of the design, of the implentation or of how to run the MAS on your PC.
+Before proceeding in this README, notice that this is divided in the following subsections, each dicussing an important aspect either of the design, of the implentation or of how to run the MAS on your PC.
 
 - Project Idea and Detailed Specification.
 - MAS Design according to GAIA Methodology.
 - How to Install and Run the MAS.
+
+Moreover, a video demo of the MAS running is available for the download at this [link](https://github.com/salvatoreScotellaro/DALIA-Quiz-MAS/releases/download/untagged-e364ef1bb39d31b25667/Quiz.MAS.Demo.mp4).
 
 ## 1. Project Idea and Detailed Specification
 Define a MAS in which there is an agent, representing a trivia quiz master, asking questions to multiple other agents which are competitors that try to win the quiz. Other than these, there are also helper agents which can all be invoked once per game from each competitor, and finally there is a quiz notary that keeps track dynamically of participants to the game, their points and who wins.
