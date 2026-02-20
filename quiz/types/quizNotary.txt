@@ -56,12 +56,12 @@ participateE(A) :> participants(L),
                    write(' participates to the Quiz!'), nl,
                    write('Current list of participants is '),
                    write(L2), nl,
-                   check_start_conditionA,
+                   check_start_condition,
                    messageA(A,send_message(confirm(Me),Me)).
 
 /* Start Game if Min Participants Joined
    and Game is in Waiting state       */
-check_start_condition :< participants(L),
+check_start_condition :- participants(L),
                 length(L,N),
                 min_participants(Min),
                 N == Min,
@@ -69,7 +69,7 @@ check_start_condition :< participants(L),
                 start_gameA.
 
 /* Wait for More Participants */
-check_start_condition :< game_state(waiting),
+check_start_condition :- game_state(waiting),
                         participants(L),
                         length(L,N),
                         min_participants(Min),
@@ -80,7 +80,7 @@ check_start_condition :< game_state(waiting),
                         write(' more participants.'), nl.
 
 /* Write Game is already Finished */
-check_start_condition :< game_state(finished),
+check_start_condition :- game_state(finished),
                          write('Game is Finished.'), nl.
 
 /* Tell Master Agent to Ask First Question */
@@ -143,7 +143,7 @@ updateE(A) :> game_state(running),
               write('. Previous points were '),
               write(P),
               write('.'), nl,
-              check_endA(A,P1).
+              check_end(A,P1).
 
 /* If all participants answered wrong, go to next question */
 next_questionE :> game_state(running),
@@ -184,11 +184,11 @@ help_overlapE(A) :> game_state(running),
                     write(' due to overlap.').
 
 /* Check Winning Condition */
-check_end(A,P) :< winning_threshold(T),
+check_end(A,P) :- winning_threshold(T),
               P == T,
               end_gameA(A,P). 
 
-check_end(A,P) :< winning_threshold(T),
+check_end(A,P) :- winning_threshold(T),
                   P < T,
                   agent(Me),
                   master(M),

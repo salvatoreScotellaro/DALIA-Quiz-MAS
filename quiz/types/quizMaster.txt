@@ -121,7 +121,7 @@ subtract_questions([],_,[]).
 subtract_questions([H|T],L2,R) :- member(H,L2), subtract_questions(T,L2,R).
 subtract_questions([H|T],L2,[H|R]) :- \+ member(H,L2), subtract_questions(T,L2,R). 
 
-generate_answers(Q,L) :<
+generate_answers(Q,L) :-
     correct(Q,A),
     available_answers(Answers),
     delete(Answers, A, WrongAnswers),
@@ -151,7 +151,7 @@ ask_questionE(L) :> game_state(running),
             participants(Participants),
             retract(participants(Participants)),
             assert(participants(L)),
-            initialize_answeredA(L),
+            initialize_answered(L),
             available_questions(Questions),
             asked_questions(Asked),
             subtract_questions(Questions, Asked, Remaining),
@@ -161,7 +161,7 @@ ask_questionE(L) :> game_state(running),
             assert(question_not_answered(Q)),
             retract(current_question(_)),
             assert(current_question(Q)),
-            generate_answersA(Q,Answers),
+            generate_answers(Q,Answers),
             write('Ask question '),
             write(Q),
             write(' to competitors '),
@@ -169,7 +169,7 @@ ask_questionE(L) :> game_state(running),
             send_to_all(L, ask(Q,Answers), Me).
 
 /* Initialize Answered Atoms for All Participants */
-initialize_answered(L) :< retractall(answered(_)).
+initialize_answered(L) :- retractall(answered(_)).
 
 /* Check Answers Correctness */
 answer_questionE(Q,A,P) :> game_state(running), current_question(Q), question_not_answered(Q), \+ answered(P), check_answerA(Q,A,P).
